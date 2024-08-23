@@ -2,15 +2,13 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from pytube import YouTube
-from pydub import AudioSegment
+from yt_dlp import YoutubeDL
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-TOKEN="YOUR TELEGRAM TOKEN HERE"
+TOKEN = "YOUR TELEGRAM TOKEN HERE"
 
 DOWNLOAD_FOLDER = './'
-
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -18,31 +16,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def download_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.message.chat_id
-    
-    # Check if the message contains a YouTube link
+
     if update.message.text and ('youtube.com' in update.message.text or 'youtu.be' in update.message.text):
         try:
-            # Download the YouTube video
             youtube_url = update.message.text
-            yt = YouTube(youtube_url)
-            video_stream = yt.streams.filter(only_audio=True).first()
-            video_file_path = video_stream.download(DOWNLOAD_FOLDER)
-
-            # Convert to MP3 with 320 kbps bitrate
-            mp3_file_path = os.path.join(DOWNLOAD_FOLDER, f"{yt.title}.mp3")
-            audio = AudioSegment.from_file(video_file_path)
             
-            # Set the desired audio bitrate to 320 kbps
-            audio = audio.set_frame_rate(48000).set_channels(2).set_sample_width(2)
+            # Download the audio using yt-dlp
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '320',
+                }],
+            }
 
-            # Export the MP3 file
-            audio.export(mp3_file_path, format="mp3", bitrate="320k")
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(youtube_url, download=True)
+                mp3_file_path = ydl.prepare_filename(info_dict).replace('.webm', '.mp3').replace('.m4a', '.mp3')
 
             # Send the MP3 file to the user
             await context.bot.send_audio(chat_id=chat_id, audio=open(mp3_file_path, 'rb'))
 
-            # Clean up: delete the downloaded video and converted MP3
-            os.remove(video_file_path)
+            # Clean up the MP3 file after sending
             os.remove(mp3_file_path)
 
         except Exception as e:

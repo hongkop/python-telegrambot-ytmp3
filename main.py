@@ -6,7 +6,7 @@ from yt_dlp import YoutubeDL
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-TOKEN = "YOUR TELEGRAM TOKEN HERE"
+TOKEN = "7748567289:AAFH8xepWgvjE9wE7mUThpsC6S7oOWmpJHg"
 
 DOWNLOAD_FOLDER = './'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
